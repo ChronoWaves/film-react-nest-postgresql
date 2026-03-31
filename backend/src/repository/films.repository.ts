@@ -1,28 +1,40 @@
 import { Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { FilmDocument, IFilm, ISchedule } from './film.schema';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Film } from './film.entity';
+import { Schedule } from './schedule.entity';
+import { IFilm, ISchedule } from './film.schema';
 
 @Injectable()
 export class FilmsRepository {
   constructor(
-    @InjectModel('Film') private readonly filmModel: Model<FilmDocument>,
+    @InjectRepository(Film)
+    private readonly filmRepo: Repository<Film>,
+    @InjectRepository(Schedule)
+    private readonly scheduleRepo: Repository<Schedule>,
   ) {}
 
   async findAll(): Promise<IFilm[]> {
-    return this.filmModel.find().lean().exec();
+    const films = await this.filmRepo.find();
+    return films.map((film) => this.toFilmInterface(film));
   }
 
   async findById(id: string): Promise<IFilm | null> {
-    return this.filmModel.findOne({ id }).lean().exec();
+    const film = await this.filmRepo.findOne({
+      where: { id },
+      relations: ['schedule'],
+    });
+    if (!film) {
+      return null;
+    }
+    return this.toFilmInterface(film);
   }
 
   async getSchedule(filmId: string): Promise<ISchedule[]> {
-    const film = await this.filmModel.findOne({ id: filmId }).lean().exec();
-    if (!film) {
-      return [];
-    }
-    return film.schedule;
+    const schedules = await this.scheduleRepo.find({
+      where: { filmId },
+    });
+    return schedules.map((s) => this.toScheduleInterface(s));
   }
 
   async addTakenSeats(
@@ -30,24 +42,69 @@ export class FilmsRepository {
     sessionId: string,
     seats: string[],
   ): Promise<ISchedule | null> {
-    const film = await this.filmModel.findOne({ id: filmId }).exec();
-    if (!film) {
+    const schedule = await this.scheduleRepo.findOne({
+      where: { id: sessionId, filmId },
+    });
+
+    if (!schedule) {
       return null;
     }
 
-    const session = film.schedule.find((s) => s.id === sessionId);
-    if (!session) {
-      return null;
-    }
+    const currentTaken = this.parseTaken(schedule.taken);
 
-    const alreadyTaken = seats.filter((seat) => session.taken.includes(seat));
+    const alreadyTaken = seats.filter((seat) => currentTaken.includes(seat));
     if (alreadyTaken.length > 0) {
       throw new Error(`Места уже забронированы: ${alreadyTaken.join(', ')}`);
     }
 
-    session.taken.push(...seats);
+    const updatedTaken = [...currentTaken, ...seats];
+    schedule.taken = updatedTaken.join(',');
 
-    await film.save();
-    return session;
+    await this.scheduleRepo.save(schedule);
+
+    return this.toScheduleInterface(schedule);
+  }
+
+  private parseTaken(taken: string): string[] {
+    if (!taken || taken.trim() === '') {
+      return [];
+    }
+    return taken.split(',').filter((s) => s.trim() !== '');
+  }
+
+  private parseTags(tags: string): string[] {
+    if (!tags || tags.trim() === '') {
+      return [];
+    }
+    return tags.split(',').map((t) => t.trim());
+  }
+
+  private toFilmInterface(film: Film): IFilm {
+    return {
+      id: film.id,
+      rating: film.rating,
+      director: film.director,
+      tags: this.parseTags(film.tags),
+      title: film.title,
+      about: film.about,
+      description: film.description,
+      image: film.image,
+      cover: film.cover,
+      schedule: film.schedule
+        ? film.schedule.map((s) => this.toScheduleInterface(s))
+        : [],
+    };
+  }
+
+  private toScheduleInterface(schedule: Schedule): ISchedule {
+    return {
+      id: schedule.id,
+      daytime: schedule.daytime,
+      hall: schedule.hall,
+      rows: schedule.rows,
+      seats: schedule.seats,
+      price: schedule.price,
+      taken: this.parseTaken(schedule.taken),
+    };
   }
 }
