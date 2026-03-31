@@ -27,10 +27,13 @@ import { Schedule } from './repository/schedule.entity';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
-        type: 'postgres' as const,
-        host: 'localhost',
-        port: 5432,
-        database: 'prac',
+        type: configService.get<string>(
+          'DATABASE_DRIVER',
+          'postgres',
+        ) as 'postgres',
+        host: configService.get<string>('DATABASE_HOST', 'localhost'),
+        port: configService.get<number>('DATABASE_PORT', 5432),
+        database: configService.get<string>('DATABASE_NAME', 'prac'),
         username: configService.get<string>('DATABASE_USERNAME', 'prac'),
         password: configService.get<string>('DATABASE_PASSWORD', 'prac'),
         entities: [Film, Schedule],

@@ -50,33 +50,16 @@ export class FilmsRepository {
       return null;
     }
 
-    const currentTaken = this.parseTaken(schedule.taken);
-
-    const alreadyTaken = seats.filter((seat) => currentTaken.includes(seat));
+    const alreadyTaken = seats.filter((seat) => schedule.taken.includes(seat));
     if (alreadyTaken.length > 0) {
       throw new Error(`Места уже забронированы: ${alreadyTaken.join(', ')}`);
     }
 
-    const updatedTaken = [...currentTaken, ...seats];
-    schedule.taken = updatedTaken.join(',');
+    schedule.taken = [...schedule.taken, ...seats];
 
     await this.scheduleRepo.save(schedule);
 
     return this.toScheduleInterface(schedule);
-  }
-
-  private parseTaken(taken: string): string[] {
-    if (!taken || taken.trim() === '') {
-      return [];
-    }
-    return taken.split(',').filter((s) => s.trim() !== '');
-  }
-
-  private parseTags(tags: string): string[] {
-    if (!tags || tags.trim() === '') {
-      return [];
-    }
-    return tags.split(',').map((t) => t.trim());
   }
 
   private toFilmInterface(film: Film): IFilm {
@@ -84,7 +67,7 @@ export class FilmsRepository {
       id: film.id,
       rating: film.rating,
       director: film.director,
-      tags: this.parseTags(film.tags),
+      tags: film.tags,
       title: film.title,
       about: film.about,
       description: film.description,
@@ -104,7 +87,7 @@ export class FilmsRepository {
       rows: schedule.rows,
       seats: schedule.seats,
       price: schedule.price,
-      taken: this.parseTaken(schedule.taken),
+      taken: schedule.taken,
     };
   }
 }
