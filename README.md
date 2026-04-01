@@ -1,44 +1,51 @@
 # FILM!
 
-## Установка
+Ссылка на задеплоенное приложение: http://chronowave-film.nomorepartiessite.ru/
 
-### PostgreSQL
+## Локальный запуск через Docker
 
-Установите PostgreSQL с помощью Docker. Из корня проекта выполните:
+1. Склонируйте репозиторий и перейдите в корень проекта.
+
+2. Создайте `.env` файл из примера:
 ```
-docker-compose up -d
+cp .env.example .env
 ```
-Затем загрузите тестовые данные:
+
+3. Запустите проект:
 ```
-docker exec -i postgres_container psql -U prac -d prac < backend/test/prac.init.sql
-docker exec -i postgres_container psql -U prac -d prac < backend/test/prac.films.sql
-docker exec -i postgres_container psql -U prac -d prac < backend/test/prac.shedules.sql
+docker compose up -d --build
 ```
+
+4. Проект будет доступен на порту 80, pgAdmin — на порту 8080.
+
+5. Авторизуйтесь в pgAdmin и заполните базу данных, выполнив SQL-файлы из `backend/test/` в следующем порядке: `prac.init.sql`, `prac.films.sql`, `prac.shedules.sql`.
+
+## Локальная разработка
+
 ### Бэкенд
+```
+cd backend
+npm ci
+npm run start:dev
+```
 
-Перейдите в папку с исходным кодом бэкенда
+### Фронтенд
+```
+cd frontend
+npm ci
+npm run dev
+```
 
-`cd backend`
+### Тесты
+```
+cd backend
+npm test
+```
 
-Установите зависимости (точно такие же, как в package-lock.json) помощью команд
+## Переменные окружения
 
-`npm ci` или `yarn install --frozen-lockfile`
+Описаны в файле `.env.example`.
 
-Создайте `.env` файл из примера `.env.example`, в нём укажите:
+## Логгирование
 
-* `DATABASE_DRIVER` - тип драйвера СУБД — `postgres`
-* `DATABASE_HOST` - хост СУБД PostgreSQL, например `localhost`
-* `DATABASE_PORT` - порт СУБД, например `5432`
-* `DATABASE_NAME` - имя базы данных, например `prac`
-* `DATABASE_USERNAME` - имя пользователя БД
-* `DATABASE_PASSWORD` - пароль пользователя БД
-
-Запустите бэкенд:
-
-`npm run start:dev`
-
-Для проверки отправьте тестовый запрос с помощью Postman или `curl`.
-
-
-
-
+Выбор логгера задаётся переменной `LOGGER` в `.env`: `dev` (по умолчанию), `json`, `tskv`.
