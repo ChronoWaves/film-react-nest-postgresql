@@ -1,0 +1,71 @@
+services:
+  frontend:
+    image: ghcr.io/${GITHUB_USER}/film-frontend:latest
+    volumes:
+      - frontend-dist:/app/dist
+    restart: unless-stopped
+
+  backend:
+    image: ghcr.io/${GITHUB_USER}/film-backend:latest
+    env_file:
+      - .env
+    environment:
+      DATABASE_HOST: postgres
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  nginx:
+    image: ghcr.io/${GITHUB_USER}/film-nginx:latest
+    ports:
+      - "80:80"
+    volumes:
+      - frontend-dist:/usr/share/nginx/html:ro
+    depends_on:
+      - frontend
+      - backend
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  postgres:
+    image: postgres:16
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${DATABASE_USERNAME}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+      POSTGRES_DB: ${DATABASE_NAME}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  pgadmin:
+    image: dpage/pgadmin4
+    env_file:
+      - .env
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+    ports:
+      - "8080:80"
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - app-network
+
+volumes:
+  frontend-dist:
+  pgdata:
+  pgadmin-data:
+
+networks:
+  app-network:
+    driver: bridge
