@@ -59,7 +59,12 @@ describe('TskvLogger', () => {
     });
 
     it('should include optionalParams for non-string params', () => {
-      const result = logger.formatMessage('log', 'test', { key: 'value' }, 'Context');
+      const result = logger.formatMessage(
+        'log',
+        'test',
+        { key: 'value' },
+        'Context',
+      );
 
       expect(result).toContain('context=Context');
       expect(result).toContain('optionalParams=');
